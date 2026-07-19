@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 069c13bc92cbc1ee9bef1a08b738cd50cd4ccb7662c7a269973d1f6db71d4816 # shrinks to history = [(Fund, 0), (SubmitEvidence { evidence_hash: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, 0), (Timeout, 501), (Fund, 0)]
+cc fa9bcdf1444cc53452b040144e9618be3f5cabb569dab0f517e1f9d1fab09808 # shrinks to history = [(Fund, 0), (SubmitEvidence { evidence_hash: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }, 0), (Dispute, 0), (Timeout, 801)]
