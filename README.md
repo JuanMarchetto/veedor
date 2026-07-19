@@ -77,6 +77,15 @@ which v0 does not have.
 verifier, the arbiter or the spec mid-flight. This one is checked by a property
 test over random event histories, not by an example.
 
+**The machine never signs what it cannot measure.** An evidence bundle is written
+by the party that gets paid, so a claim inside it is not a verification. Checks
+that can be recomputed from an instrument reading (deviation against tolerance,
+delivery time against deadline) settle automatically. Checks that cannot (does the
+material match, is the count right) return `NeedsHumanJudgment`, the assessment
+becomes `Inconclusive`, and the server refuses to sign and names the items a human
+has to rule on. Reading the provider's own self-report and calling it a verdict
+would rebuild the exact problem this project exists to fix.
+
 ## Status
 
 Early. The state machine is done and tested. The on-chain program and the agent
@@ -85,19 +94,21 @@ surfaces are in progress.
 | Component | State |
 |---|---|
 | `crates/settlement-core` — state machine, attestation, arbitration, timeouts | done, 38 tests |
+| `crates/settlement-client` — canonical hashing, schema validation, signing, evidence evaluation | done, 54 tests |
+| `services/mcp-settlement` — MCP tools an agent drives the job through | done, 17 tests |
 | `spec/*.schema.json` — job spec and evidence formats | done |
 | Anchor program (accounts, token movement, Ed25519 precompile checks) | in progress |
-| Agent surfaces (MCP tools, x402 entry) | in progress |
+| x402 payment entry | not yet |
 | Devnet demo | not yet |
 
 ## Running the tests
 
 ```sh
-cargo test -p settlement-core
+cargo test
 ```
 
-Under 30 seconds. Most of it is one test that flips all 512 bits of a signature and
-requires every single one to break the release.
+109 tests, under a minute. Most of the time goes to one test that flips all 512 bits
+of a signature and requires every single one to break the release.
 
 The state machine carries no Solana dependency on purpose: the logic that decides
 whether money moves runs in microseconds, so property tests can hammer it with

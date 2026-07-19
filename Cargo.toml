@@ -1,8 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["crates/settlement-core"]
+members = ["crates/settlement-core", "crates/settlement-client", "services/mcp-settlement"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+
+# Required by `anchor build` for programs/settlement (Anchor refuses to build any program
+# in the workspace without this: unchecked integer overflow in on-chain code is a classic
+# Solana vulnerability class).
+[profile.release]
+overflow-checks = true
