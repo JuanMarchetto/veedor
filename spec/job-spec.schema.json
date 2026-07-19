@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agentic-settlement.dev/schemas/job-spec/0.1.json",
+  "title": "Job spec",
+  "description": "What was ordered, in terms a machine can check after the fact. The hash of this document, canonically serialized, is committed on-chain when the escrow is created. Integers only: floats do not hash reproducibly across languages.",
+  "type": "object",
+  "required": ["version", "kind", "artifact", "delivery", "price", "acceptance"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": "0.1" },
+    "kind": {
+      "description": "Vertical. Each kind fixes the shape of `artifact` and the vocabulary of `acceptance`.",
+      "enum": ["print3d"]
+    },
+    "artifact": {
+      "type": "object",
+      "required": ["model_sha256", "material", "tolerance_um"],
+      "additionalProperties": false,
+      "properties": {
+        "model_sha256": {
+          "description": "Hash of the STL/STEP file. The file itself lives off-chain.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "material": { "enum": ["PLA", "PETG", "ABS", "RESIN"] },
+        "tolerance_um": {
+          "description": "Micrometres. Integer so the acceptance check is exact.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "quantity": { "type": "integer", "minimum": 1, "default": 1 }
+      }
+    },
+    "delivery": {
+      "type": "object",
+      "required": ["region", "deadline_unix"],
+      "additionalProperties": false,
+      "properties": {
+        "region": {
+          "description": "ISO 3166-2 subdivision, e.g. AR-B.",
+          "type": "string",
+          "pattern": "^[A-Z]{2}(-[A-Z0-9]{1,3})?$"
+        },
+        "deadline_unix": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "price": {
+      "type": "object",
+      "required": ["amount_minor", "mint"],
+      "additionalProperties": false,
+      "properties": {
+        "amount_minor": {
+          "description": "Minor units (cents for a 6-decimal stablecoin: 2500 = 25.00). Never a float.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "mint": { "type": "string", "description": "SPL mint address of the settlement currency." }
+      }
+    },
+    "acceptance": {
+      "description": "The checks a verifier runs. Each one must be answerable yes/no from the evidence bundle alone, without asking the buyer.",
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "check"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]{1,32}$" },
+          "check": {
+            "enum": ["dimensions_within_tolerance", "material_matches", "delivered_before_deadline", "quantity_matches"]
+          }
+        }
+      }
+    }
+  }
+}

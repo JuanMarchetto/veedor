@@ -1,0 +1,12 @@
+[package]
+name = "settlement-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Escrow state machine for agentic settlement. No Solana dependencies: pure logic, fast tests."
+
+[dependencies]
+ed25519-dalek = { version = "2", default-features = false }
+
+[dev-dependencies]
+proptest = "1"
