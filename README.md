@@ -14,10 +14,23 @@ where the payment rail cannot see whether anything happened.
 
 ## The gap this fills
 
-Agent payment infrastructure shipped in the last year and works: x402 processed
-165M transactions, OpenAI and Stripe published the Agentic Commerce Protocol,
-Google published AP2. Read their specs and the post-payment column is empty. Every
-one of them delegates fulfillment liability to the merchant.
+Agent payment infrastructure shipped in the last year and works. OpenAI and Stripe
+published the Agentic Commerce Protocol, Google published AP2, and Coinbase's x402
+directory lists 24,905 services that take payment over HTTP. Read their specs and the
+post-payment column is empty. Every one of them delegates fulfillment liability to the
+merchant.
+
+That directory is also the honest measure of how early this is. Sample it yourself:
+
+```sh
+curl -s "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources?limit=200"
+```
+
+Across 1,000 of those services, the median price is one cent and 86% charge under ten
+cents. They are API calls billed per request. Not one involves physical work. Escrow
+does not belong at that price, and nothing about an API call needs inspecting. This
+project is built for the transactions that come after those: the ones where something
+gets made, moved or delivered, and where the amount justifies checking.
 
 That gap has consequences already. OpenAI shut down Instant Checkout in March 2026
 citing fraud and tax operations. Marketplaces where agents hire humans verify
