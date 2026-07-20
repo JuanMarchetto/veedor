@@ -10,3 +10,10 @@ ed25519-dalek = { version = "2", default-features = false }
 
 [dev-dependencies]
 proptest = "1"
+
+# `kani` is not a real Cargo feature: cargo-kani sets `--cfg kani` itself when it compiles this
+# crate for verification. Registering it here just tells rustc's unexpected_cfgs lint that
+# `#[cfg(kani)]` in src/proofs.rs is intentional, so `-D warnings` builds outside cargo-kani
+# don't trip over it.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(kani)"] }
