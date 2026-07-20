@@ -149,6 +149,48 @@ Both acceptance items were recomputed from measurements. Had the spec asked whet
 the material matched, the run would have stopped with `Inconclusive` instead of
 signing, because no instrument settles that question.
 
+## Try it from your own agent
+
+The MCP server exposes the job cycle as tools, so any MCP client can drive one. Build
+it and point a client at the binary:
+
+```sh
+cargo build --release -p mcp-settlement
+claude mcp add veedor -- "$PWD/target/release/mcp-settlement"
+```
+
+For a client that takes JSON config:
+
+```json
+{
+  "mcpServers": {
+    "veedor": { "command": "/absolute/path/to/veedor/target/release/mcp-settlement" }
+  }
+}
+```
+
+Five tools: `create_job`, `job_status`, `submit_evidence`, `release`, `dispute`. Ask
+your agent to create a job for a 3D printed part, submit evidence with a measured
+deviation, and release it. Then ask it to do the same with an acceptance item the
+machine cannot measure, and watch the server refuse to sign.
+
+Here is that second case, printed by the binary. The spec asks for a measurable check
+and an unmeasurable one, the provider vouches for the unmeasurable one in its own
+evidence, and the server declines:
+
+```
+ok       {"job_id":"81a3036a…","spec_hash":"7c29edba…","state":"Funded"}
+ok       {"evidence_hash":"3a69f895…","state":"UnderReview"}
+REFUSED  cannot sign automatically: 1 acceptance item(s) need a human verifier (mat).
+         No instrument settles these, and the evidence bundle is written by the party
+         that gets paid.
+```
+
+The job stays open for a human verifier instead of settling on the provider's word.
+
+This v0 keeps state in memory and holds the verifier key itself, which is the right
+shape for trying the flow and the wrong shape for anything else.
+
 ## Running the tests
 
 ```sh
