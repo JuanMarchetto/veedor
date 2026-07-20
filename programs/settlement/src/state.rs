@@ -168,6 +168,15 @@ impl Job {
     /// Project this account down to the pure `settlement_core::Job` that `apply` operates
     /// on. The four shell-only fields have no counterpart in the core type; they ride
     /// along unchanged on the account and are never inputs to a transition.
+    /// Rebuilds the core job from account data.
+    ///
+    /// This is the boundary of `settlement_core`'s formal proofs. Two of the Kani
+    /// harnesses assume a well-formed job (the state agrees with whether evidence is
+    /// on record), and that assumption is discharged by proving `Job::created` starts
+    /// well-formed and `Job::apply` preserves it. This constructor sidesteps both, so
+    /// the assumption holds here only because the job account is a program-owned PDA
+    /// whose bytes never come from anywhere but a previous `apply`. An instruction
+    /// that writes job state by any other route would break that chain silently.
     pub fn to_core(&self) -> settlement_core::Job {
         settlement_core::Job {
             job_id: self.job_id,

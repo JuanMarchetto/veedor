@@ -1,0 +1,22 @@
+[package]
+name = "x402-gateway"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "HTTP x402 payment gateway in front of the agentic-settlement job lifecycle: POST /jobs returns 402 with payment requirements derived from the job spec until a valid payment proof is presented, then creates and funds the job."
+
+[dependencies]
+settlement-core = { path = "../../crates/settlement-core" }
+settlement-client = { path = "../../crates/settlement-client" }
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ed25519-dalek = { version = "2", default-features = false }
+base64 = "0.22"
+getrandom = "0.3"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

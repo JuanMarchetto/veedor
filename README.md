@@ -111,7 +111,7 @@ surfaces are in place, and the program is deployed. No mainnet, no real money.
 | `spec/*.schema.json` — job spec and evidence formats | done |
 | `programs/settlement` — Anchor shell: PDA accounts, SPL escrow, Ed25519 precompile checks | done, 34 tests |
 | `demo` — drives one job through the deployed program on devnet | see below |
-| x402 payment entry | in progress |
+| `services/x402-gateway` — HTTP entry that answers 402 and takes payment | done, 15 tests. Authorization only, see below |
 
 ## On devnet
 
@@ -155,7 +155,7 @@ signing, because no instrument settles that question.
 cargo test
 ```
 
-151 tests. Most of the time goes to one test that flips all 512 bits of a signature and
+166 tests. Most of the time goes to one test that flips all 512 bits of a signature and
 requires every single one to break the release.
 
 The Anchor program's tests run against `litesvm`, an in-process SVM with the real
@@ -169,11 +169,71 @@ cargo build-sbf --manifest-path programs/settlement/Cargo.toml
 
 The state machine carries no Solana dependency on purpose: the logic that decides
 whether money moves runs in microseconds, so property tests can hammer it with
-random event histories, and a proof harness can reach it later.
+random event histories, and a Kani harness can check it exhaustively.
 
 The invariant suite was checked by injecting a real bug (letting a settled job
 accept funds again) and confirming the properties caught it. A property test you
 have never seen fail is decoration.
+
+### Formal verification
+
+`crates/settlement-core/src/proofs.rs` holds [Kani](https://github.com/model-checking/kani)
+harnesses for `Job::apply`. Property tests sample random event histories; Kani proves the same
+claims for every input, not a sample of them. This is possible because `apply` no longer touches
+ed25519: signature checks happen upstream, in `Attestation::verify_for` and
+`Ruling::verify_for`, before an event ever reaches `apply`. What's left is integer comparisons
+and struct rebuilds, a shape a model checker can decide instead of sample.
+
+Install Kani once (`cargo install --locked kani-verifier && cargo kani setup`), then run:
+
+```sh
+cargo kani --manifest-path crates/settlement-core/Cargo.toml -j
+```
+
+`-j` checks the 9 harnesses in parallel; the whole run finishes in about 30 seconds on a
+4-core machine. Drop `-j` to run them one at a time (about 2 minutes total) if you need the
+output free of interleaved thread logs. Every harness reports `VERIFICATION:- SUCCESSFUL`:
+
+- **Absorbency.** `Released` and `Refunded` reject every event, for every `now`.
+- **Monotonicity.** A successful transition never lowers the state's rank
+  (`Created < Funded < UnderReview < Disputed < settled`).
+- **Immutable terms.** No successful transition changes `job_id`, `spec_hash`, `amount`,
+  `verifier`, `arbiter`, or `windows`.
+- **Payment requires evidence.** `next.state == Released` implies `evidence_hash.is_some()` and
+  the prior state was `UnderReview` or `Disputed`.
+- **Evidence is write-once.** Once `evidence_hash` is `Some(h)`, no successful transition changes
+  it.
+- **Deadline arithmetic never overflows.** The `saturating_add` behind `review_deadline` and
+  `arbitration_deadline` matches its spec for every `i64` pair, `now == i64::MAX` and maximal
+  windows included.
+
+The last two of those hold only for jobs reachable from `Job::created`, not for an arbitrary
+`Job` value. Kani found this the hard way: an arbitrary `Job { state: UnderReview,
+evidence_hash: None }` is not a state any real history reaches (the only transition into
+`UnderReview` always sets `evidence_hash`), but `apply` does not independently check for it, so
+the first version of the payment-requires-evidence harness failed on exactly that input, and
+evidence-write-once failed the mirror case in `Funded`. The fix is not a narrower harness: two
+more harnesses (`well_formed_base_case`, `well_formed_is_inductive`) prove by induction that
+every job reachable from `Job::created` keeps evidence and state in that relationship, and the
+two affected harnesses assume that proven invariant instead of guessing at the input. That
+`kani::assume` is the only one in the file; everywhere else, harnesses run over the full type,
+not a reachable subset of it.
+
+## What is not real yet
+
+Two things this repo could be mistaken for, and is not.
+
+**The x402 gateway does not verify payments.** It verifies *authorization*: a real
+ed25519 signature over the (spec, amount, asset, destination) tuple, bound to the
+spec hash so a proof cannot be replayed against a different job. Nothing in it checks
+a balance, decodes a transaction, or talks to an RPC. The real x402 "exact" scheme on
+Solana settles a partially-signed transaction through a facilitator, and that
+integration sits behind the `PaymentVerifier` trait as an explicit TODO. Read
+`services/x402-gateway/src/verifier.rs` before trusting anything this crate says
+about payment.
+
+**Devnet is not mainnet.** The program is deployed, the demo settles a real job, and
+none of it involves money anyone can lose.
 
 ## License
 

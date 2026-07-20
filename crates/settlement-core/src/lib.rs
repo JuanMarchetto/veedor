@@ -11,6 +11,9 @@
 
 use ed25519_dalek::{Signature, VerifyingKey};
 
+#[cfg(kani)]
+mod proofs;
+
 /// Domain tag for a verifier's inspection result. Without it, a signature produced
 /// for another protocol under the same key could be replayed as an attestation.
 pub const ATTESTATION_DOMAIN: &[u8] = b"agentic-settlement/attestation/v1";
