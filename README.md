@@ -113,6 +113,14 @@ surfaces are in place, and the program is deployed. No mainnet, no real money.
 | `demo` — drives one job through the deployed program on devnet | see below |
 | `services/x402-gateway` — HTTP entry that answers 402 and takes payment | done, 15 tests. Authorization only, see below |
 
+## Watch it settle a job
+
+A 60-second walkthrough, narrated:
+[**veedor-demo.mp4**](https://github.com/JuanMarchetto/veedor/releases/download/v0.1.0-demo/veedor-demo.mp4)
+
+Everything on screen is real output: the job settling on devnet, and the server
+declining to sign an acceptance item that no instrument can settle.
+
 ## On devnet
 
 The program is deployed and executable:
