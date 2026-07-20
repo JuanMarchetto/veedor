@@ -1,0 +1,31 @@
+[package]
+name = "demo"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Drives one job through the deployed program on devnet, start to settlement."
+
+[dependencies]
+settlement-core = { path = "../crates/settlement-core" }
+settlement-client = { path = "../crates/settlement-client" }
+ed25519-dalek = { version = "2", default-features = false }
+serde_json = "1"
+sha2 = "0.10"
+bs58 = "0.5"
+
+# Same SDK generation the program's test harness pins. anchor-lang 0.32.1 sits on an
+# older, incompatible line, so instructions are built by hand here too: the Anchor
+# discriminator is just sha256("global:<name>")[..8], and the account metas are known.
+solana-address = ">=2.2, <3"
+solana-client = "3"
+solana-commitment-config = "3"
+solana-instruction = "3.4.0"
+solana-keypair = "3.1.2"
+solana-message = "3"
+solana-native-token = "3"
+solana-signer = "3.0.1"
+solana-system-interface = { version = "2", features = ["bincode"] }
+solana-transaction = { version = "3.1", features = ["bincode", "verify"] }
+solana-ed25519-program = "3.0.0"
+solana-compute-budget-interface = "3.0.0"

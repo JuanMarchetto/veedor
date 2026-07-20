@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/settlement-core", "crates/settlement-client", "services/mcp-settlement", "programs/settlement"]
+members = ["crates/settlement-core", "crates/settlement-client", "services/mcp-settlement", "programs/settlement", "demo"]
 
 [workspace.package]
 version = "0.1.0"
