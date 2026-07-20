@@ -100,8 +100,8 @@ would rebuild the exact problem this project exists to fix.
 
 ## Status
 
-Early but working end to end in tests. The state machine, the on-chain program and the
-agent surfaces are all in place. Nothing has touched a live network yet.
+Early, and running on devnet. The state machine, the on-chain program and the agent
+surfaces are in place, and the program is deployed. No mainnet, no real money.
 
 | Component | State |
 |---|---|
@@ -110,8 +110,44 @@ agent surfaces are all in place. Nothing has touched a live network yet.
 | `services/mcp-settlement` — MCP tools an agent drives the job through | done, 17 tests |
 | `spec/*.schema.json` — job spec and evidence formats | done |
 | `programs/settlement` — Anchor shell: PDA accounts, SPL escrow, Ed25519 precompile checks | done, 34 tests |
-| x402 payment entry | not yet |
-| Devnet deployment and demo | not yet |
+| `demo` — drives one job through the deployed program on devnet | see below |
+| x402 payment entry | in progress |
+
+## On devnet
+
+The program is deployed and executable:
+
+```
+8YpCfYtCBiLZ5SzTcmVZ5fkeBbPrvveWZnEzwpN8CQfJ
+```
+
+`cargo run -p demo` walks one job from creation to settlement against that
+deployment: a real SPL mint, real token accounts, a real ed25519 precompile
+verifying the verifier's signature, and real transactions. It prints an explorer
+link for every step, so the claims here can be checked rather than believed.
+
+A run from 2026-07-20, with the job priced at 25.000000 of a six-decimal token:
+
+| Step | State after | Transaction |
+|---|---|---|
+| `create_job` | `Created` | [`2FScXRTz…`](https://explorer.solana.com/tx/2FScXRTzv3cVywnPYPERMsqGfzDYdET5cDmdfNakew1TMNZuAd2j52dcxRMdef4zF2Z6Py36cXvuWovGkax7Af4K?cluster=devnet) |
+| `fund` | `Funded`, escrow holds 25000000 | [`5gqyXVmc…`](https://explorer.solana.com/tx/5gqyXVmcw2iBgBimXMH4hCQ9Tw8U5dC1z2xSDMiPFAassJhY9XskgUpdSgB4xNduAMTyKSqsvuZ9ShNTJjdJr8bY?cluster=devnet) |
+| `submit_evidence` | `UnderReview` | [`3DN6tqjY…`](https://explorer.solana.com/tx/3DN6tqjYPaFaZLmvRtdfVqWnpjWiHhfRhHx8azFTQ7cgdQKComiyfFGqMDcJhajVwSQX3arDevKvkAHUcaeRQuSM?cluster=devnet) |
+| `release` | `Released`, provider holds 25000000 | [`5kjR36gG…`](https://explorer.solana.com/tx/5kjR36gGsGra7JTypHeQQovuLz39GhQ1H1soizkXxE1V1m7Qzr7CTCmpw714CgjDKUxttxBFG6VnSPu758RYUiZS?cluster=devnet) |
+
+The job account for that run is
+[`BQULDgfj…`](https://explorer.solana.com/address/BQULDgfj66yENxaPXaY1GMGneM9KPDpUF7FM7yP2GTU9?cluster=devnet).
+What the verifier actually decided, printed by the same run:
+
+```
+Passed  'dims': measured deviation 40um against a 200um tolerance
+Passed  'on_time': delivered at 1784552408, deadline was 1784556002
+assessment Pass
+```
+
+Both acceptance items were recomputed from measurements. Had the spec asked whether
+the material matched, the run would have stopped with `Inconclusive` instead of
+signing, because no instrument settles that question.
 
 ## Running the tests
 
