@@ -9,9 +9,11 @@
 //! `GET /jobs/{id}` reads a job's current state.
 //!
 //! **Read [`verifier`]'s module docs before trusting anything this crate says about
-//! payment**: v0 verifies a signed authorization structure of this crate's own
-//! design, not a real Solana transaction. Real on-chain payment verification is an
-//! explicit `TODO`, not something this crate pretends to do.
+//! payment**: with `X402_GATEWAY_RPC_URL` set, [`SolanaPaymentVerifier`] checks a
+//! real on-chain transfer — the payer's own signed transaction, exact amount to the
+//! right account, landed on chain, never presented before. Without it, the default
+//! [`StubVerifier`] checks only a signed authorization structure of this crate's own
+//! design; it exists to exercise the HTTP layer in tests, not to verify payment.
 //!
 //! State is in-memory only, same as `mcp-settlement`: this process's lifetime is the
 //! store's lifetime.

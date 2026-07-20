@@ -16,18 +16,21 @@ where the payment rail cannot see whether anything happened.
 
 Agent payment infrastructure shipped in the last year and works. OpenAI and Stripe
 published the Agentic Commerce Protocol, Google published AP2, and Coinbase's x402
-directory lists 24,905 services that take payment over HTTP. Read their specs and the
+directory lists 24,929 services that take payment over HTTP. Read their specs and the
 post-payment column is empty. Every one of them delegates fulfillment liability to the
 merchant.
 
-That directory is also the honest measure of how early this is. Sample it yourself:
+That directory is also the honest measure of how early this is. Sample it yourself —
+the census script and the raw data it produced live in [`research/x402-census`](research/x402-census):
 
 ```sh
-curl -s "https://api.cdp.coinbase.com/platform/v2/x402/discovery/resources?limit=200"
+python3 research/x402-census/census.py --sample 1000
 ```
 
-Across 1,000 of those services, the median price is one cent and 86% charge under ten
-cents. They are API calls billed per request. Not one involves physical work. Escrow
+Across 1,000 of those services on 2026-07-20, the median price is one cent and 86%
+charge under ten cents. They are API calls billed per request. The one physical thing
+in the sample prints and mails paper letters; nothing else touches the world, and
+nothing carries an acceptance criterion an inspection could check. Escrow
 does not belong at that price, and nothing about an API call needs inspecting. This
 project is built for the transactions that come after those: the ones where something
 gets made, moved or delivered, and where the amount justifies checking.
@@ -259,12 +262,12 @@ and struct rebuilds, a shape a model checker can decide instead of sample.
 Install Kani once (`cargo install --locked kani-verifier && cargo kani setup`), then run:
 
 ```sh
-cargo kani --manifest-path crates/settlement-core/Cargo.toml -j
+cargo kani --manifest-path crates/settlement-core/Cargo.toml -j --output-format=terse
 ```
 
-`-j` checks the 9 harnesses in parallel; the whole run finishes in about 30 seconds on a
-4-core machine. Drop `-j` to run them one at a time (about 2 minutes total) if you need the
-output free of interleaved thread logs. Every harness reports `VERIFICATION:- SUCCESSFUL`:
+`-j` checks the 9 harnesses in parallel (it requires `--output-format=terse` on current
+Kani); the whole run finishes in about 30 seconds on a 4-core machine. Drop both flags
+to run them one at a time (about 2 minutes total) with full per-harness output. Every harness reports `VERIFICATION:- SUCCESSFUL`:
 
 - **Absorbency.** `Released` and `Refunded` reject every event, for every `now`.
 - **Monotonicity.** A successful transition never lowers the state's rank
@@ -327,6 +330,12 @@ than it is:
 - **Legacy transactions only.** `VersionedTransaction` is not decoded.
 - **In-memory replay protection.** The set of used transaction signatures does not
   survive a gateway restart, same as every other piece of state this v0 keeps.
+
+**The measured values are still provider-authored in v0.** The evidence bundle is
+written by the party that gets paid, and the verifier recomputes checks from the
+readings inside it: the comparison is independent, the measurement is not yet. The
+missing piece is the verifier who holds the instrument and signs the raw reading,
+and that network is the thing this project exists to build.
 
 **Devnet is not mainnet.** The program is deployed, the demo settles a real job, the
 gateway can verify a real devnet payment, and none of it involves money anyone can
