@@ -111,7 +111,7 @@ surfaces are in place, and the program is deployed. No mainnet, no real money.
 | `spec/*.schema.json` — job spec and evidence formats | done |
 | `programs/settlement` — Anchor shell: PDA accounts, SPL escrow, Ed25519 precompile checks | done, 34 tests |
 | `demo` — drives one job through the deployed program on devnet | see below |
-| `services/x402-gateway` — HTTP entry that answers 402 and takes payment | done, 15 tests. Authorization only, see below |
+| `services/x402-gateway` — HTTP entry that answers 402 and takes payment | done, 31 tests (+2 devnet-only, `--ignored`). Real on-chain verification available, see below |
 
 ## Watch it settle a job
 
@@ -202,11 +202,20 @@ shape for trying the flow and the wrong shape for anything else.
 ## Running the tests
 
 ```sh
-cargo test
+cargo test --workspace
 ```
 
-166 tests. Most of the time goes to one test that flips all 512 bits of a signature and
+182 tests. Most of the time goes to one test that flips all 512 bits of a signature and
 requires every single one to break the release.
+
+Two more tests exist but do not run by default: `services/x402-gateway`'s
+`tests/payment_verification_solana.rs` has two `#[ignore]`d tests that create a real
+SPL mint and submit a real transfer on devnet to prove `SolanaPaymentVerifier`
+accepts a genuine payment and rejects a replay of it. Run them explicitly:
+
+```sh
+cargo test -p x402-gateway --test payment_verification_solana -- --ignored --test-threads=1
+```
 
 The Anchor program's tests run against `litesvm`, an in-process SVM with the real
 ed25519 precompile, so the attack tests carry genuine signatures and prove the program
@@ -271,19 +280,44 @@ not a reachable subset of it.
 
 ## What is not real yet
 
-Two things this repo could be mistaken for, and is not.
+**The x402 gateway can now verify a real on-chain payment, with no facilitator.**
+`SolanaPaymentVerifier` (`services/x402-gateway/src/verifier.rs`) decodes a signed
+Solana transaction out of the payment proof, checks its signatures cryptographically,
+scans it for an exact `TransferChecked` to the configured recipient's associated
+token account (right mint, right amount, no "at least") and confirms via RPC that the
+transaction's own signature is actually landed on devnet with no error. Two tests
+prove this against real devnet, not a mock: `cargo test -p x402-gateway --test
+payment_verification_solana -- --ignored --test-threads=1` creates a real SPL mint
+and submits a real transfer, then shows the gateway accepts it once and rejects the
+identical transaction presented a second time.
 
-**The x402 gateway does not verify payments.** It verifies *authorization*: a real
-ed25519 signature over the (spec, amount, asset, destination) tuple, bound to the
-spec hash so a proof cannot be replayed against a different job. Nothing in it checks
-a balance, decodes a transaction, or talks to an RPC. The real x402 "exact" scheme on
-Solana settles a partially-signed transaction through a facilitator, and that
-integration sits behind the `PaymentVerifier` trait as an explicit TODO. Read
-`services/x402-gateway/src/verifier.rs` before trusting anything this crate says
-about payment.
+The `StubVerifier` this replaced still exists, still runs by default when the gateway
+binary is started with no `X402_GATEWAY_RPC_URL` set, and still only checks *authorization*
+(an ed25519 signature over the (spec, amount, asset, destination) tuple) rather than a
+real payment -- it exists now to exercise the HTTP layer in tests without a chain, not
+because on-chain verification is unbuilt.
 
-**Devnet is not mainnet.** The program is deployed, the demo settles a real job, and
-none of it involves money anyone can lose.
+What `SolanaPaymentVerifier` genuinely does not do, so nobody mistakes v0 for more
+than it is:
+
+- **No facilitator, and no gateway-as-fee-payer, by design.** The model it chose is
+  the payer signs and submits their own transaction, then presents it as proof; the
+  gateway confirms it already happened rather than broadcasting it. See that type's
+  doc comment for why this is the model, not a corner cut.
+- **No spec binding.** Nothing ties a specific transfer to a specific job spec the
+  way `StubVerifier`'s nonce does. Replay is blocked globally (one transaction funds
+  at most one job, ever), but two different specs that happen to require the
+  identical (amount, asset, payTo) triple could both be satisfied by presenting the
+  same transaction — whichever `POST /jobs` gets there first wins, and the second
+  gets `payment_already_used`, not a spec-specific rejection.
+- **Classic SPL Token only.** Token-2022 mints are out of scope.
+- **Legacy transactions only.** `VersionedTransaction` is not decoded.
+- **In-memory replay protection.** The set of used transaction signatures does not
+  survive a gateway restart, same as every other piece of state this v0 keeps.
+
+**Devnet is not mainnet.** The program is deployed, the demo settles a real job, the
+gateway can verify a real devnet payment, and none of it involves money anyone can
+lose.
 
 ## License
 

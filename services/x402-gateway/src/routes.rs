@@ -177,6 +177,9 @@ fn verify_error_message(error: VerifyError) -> &'static str {
         VerifyError::AssetMismatch => "payment proof names a different asset than required",
         VerifyError::RecipientMismatch => "payment proof names a different recipient than required",
         VerifyError::AmountMismatch => "payment amount does not exactly match the amount required",
+        VerifyError::TransferNotFound => "payment proof contains no matching SPL transfer instruction",
+        VerifyError::NotConfirmedOnChain => "payment transaction is not confirmed on chain",
+        VerifyError::AlreadyUsed => "payment transaction has already been used to fund a job",
     }
 }
 

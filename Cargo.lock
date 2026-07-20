@@ -9485,6 +9485,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "base64 0.22.1",
+ "bincode",
  "ed25519-dalek 2.2.0",
  "getrandom 0.3.4",
  "http-body-util",
@@ -9492,6 +9493,14 @@ dependencies = [
  "serde_json",
  "settlement-client",
  "settlement-core",
+ "solana-address 2.6.1",
+ "solana-client",
+ "solana-commitment-config",
+ "solana-instruction 3.4.0",
+ "solana-keypair",
+ "solana-signer 3.0.1",
+ "solana-system-interface 2.0.0",
+ "solana-transaction 3.1.0",
  "tokio",
  "tower",
 ]

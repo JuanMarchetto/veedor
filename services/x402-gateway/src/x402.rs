@@ -18,24 +18,28 @@
 //! **Where this deviates from the real spec, and why:**
 //!
 //! 1. The real "exact" scheme on Solana (`scheme_exact_svm.md`) carries a
-//!    base64-encoded, partially-signed *Solana transaction* as the payment proof: a
+//!    base64-encoded, *partially-signed* Solana transaction as the payment proof: a
 //!    facilitator decodes it, checks a strict instruction layout (compute budget,
 //!    `TransferChecked`, optional memo/lighthouse instructions), co-signs as fee
-//!    payer, and submits it on-chain. Building and driving that (transaction
-//!    decoding, ATA derivation, an actual facilitator, RPC submission) is out of
-//!    scope for this v0 per the task this crate was built for. Instead, `payload`
-//!    below carries a **veedor-specific, ed25519-signed authorization** object (see
-//!    [`crate::verifier`]) that is *inspired by* the exact scheme's fields (payer,
-//!    amount, asset, destination) but is not a Solana transaction and is never
-//!    submitted to any chain. This is the single largest deviation in this crate and
-//!    is called out again at the verifier.
+//!    payer, and submits it on-chain. This gateway has no facilitator and does not
+//!    build one (see [`crate::verifier`] for why, and the model it uses instead).
+//!    `payload` below (a [`crate::verifier::GatewayProof`]) can carry either of two
+//!    genuinely different things depending which `PaymentVerifier` the gateway runs:
+//!    a **veedor-specific, ed25519-signed authorization** object (inspired by the
+//!    exact scheme's fields but not a Solana transaction, never submitted to any
+//!    chain -- what [`crate::verifier::StubVerifier`] reads), or a real, *fully*
+//!    signed Solana transaction the payer already submitted and confirmed themselves
+//!    (what [`crate::verifier::SolanaPaymentVerifier`] reads and independently
+//!    confirms via RPC). Partially-signed, facilitator-cosigned transactions per the
+//!    letter of `scheme_exact_svm.md` are still not built here -- that remains the
+//!    one deviation this crate cannot close without an actual facilitator.
 //! 2. `network` values in the real spec are CAIP-2 chain identifiers pinned to a
 //!    specific genesis hash (e.g. `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` for
 //!    mainnet). This gateway takes `network` as an operator-configured string and
-//!    does not validate its shape, since v0 never talks to any RPC that could
-//!    confirm which chain it names.
+//!    does not validate its shape against a real genesis hash.
 //! 3. `extra` (scheme-specific additional requirements, e.g. `feePayer` for the real
-//!    SVM scheme) is omitted: there is no facilitator in v0 to name as fee payer.
+//!    SVM scheme) is omitted: there is no facilitator to name as fee payer, under
+//!    either `PaymentVerifier` this gateway ships.
 //! 4. Error codes in `errorReason`/`X-PAYMENT-RESPONSE` are this crate's own
 //!    (`invalid_signature`, `amount_mismatch`, ...) rather than the spec's
 //!    EVM-flavored vocabulary (`invalid_exact_evm_payload_signature`, ...), since

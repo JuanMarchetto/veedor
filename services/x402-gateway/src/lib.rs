@@ -23,7 +23,9 @@ pub mod verifier;
 pub mod x402;
 
 pub use state::AppState;
-pub use verifier::{sign_proof, GatewayProof, PaymentVerifier, StubVerifier, VerifiedPayment, VerifyError};
+pub use verifier::{
+    sign_proof, GatewayProof, PaymentVerifier, SolanaPaymentVerifier, StubVerifier, VerifiedPayment, VerifyError,
+};
 pub use x402::{PaymentPayload, PaymentRequiredBody, PaymentRequirements, SettlementResponse};
 
 use std::sync::Arc;
