@@ -1,0 +1,65 @@
+[package]
+name = "settlement"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Anchor shell over settlement-core: PDA accounts, SPL escrow, ed25519 precompile checks. No transition logic lives here."
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "settlement"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+anchor-lang = "0.32.1"
+anchor-spl = "0.32.1"
+settlement-core = { path = "../../crates/settlement-core" }
+solana-instructions-sysvar = "2"
+solana-sdk-ids = "2"
+
+[dev-dependencies]
+# litesvm and settlement-the-program (via anchor-lang) sit on two different, mutually
+# incompatible generations of the Solana Rust SDK (the split "solana-address"/"solana-instruction"
+# crates litesvm builds on, vs. the older line anchor-lang 0.32.1 pins). There is no
+# version overlap between them, so this test harness builds every transaction by hand
+# against litesvm's own crate versions -- pinned here to match litesvm 0.14.0's exactly --
+# rather than going through anchor-lang's or spl-token's account/instruction helper types.
+ed25519-dalek = { version = "2", default-features = false }
+litesvm = { version = "0.14", features = ["precompiles"] }
+settlement-core = { path = "../../crates/settlement-core" }
+solana-account = "4.3.0"
+solana-compute-budget-interface = "3.0.0"
+solana-address = ">=2.2, <3"
+solana-clock = { version = "3.1.1", features = ["wincode"] }
+solana-ed25519-program = "3.0.0"
+solana-hash = "4.3.0"
+solana-instruction = "3.4.0"
+solana-instruction-error = "2.4.0"
+solana-keypair = "3.1.2"
+solana-message = "4.2.4"
+solana-signer = "3.0.1"
+solana-transaction = { version = "4.1.5", features = ["wincode", "verify"] }
+solana-transaction-error = "3.3.1"
+
+[lints.clippy]
+result_large_err = "allow"
+
+# Anchor's `#[program]` macro emits these cfgs; rustc 1.80+ flags unknown ones. Naming
+# them keeps `-D warnings` meaningful instead of blanket-silencing the lint.
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+    'cfg(target_os, values("solana"))',
+    'cfg(feature, values("custom-heap", "custom-panic", "anchor-debug"))',
+] }
+
+# NOTE: `overflow-checks = true` for [profile.release] lives in the *workspace root*
+# Cargo.toml, not here -- Cargo only honors [profile.*] sections from the workspace root
+# manifest; a copy here would be silently ignored (with a warning). `anchor build` requires
+# it to be set at the root for any program in this workspace to build at all.

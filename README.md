@@ -77,6 +77,18 @@ which v0 does not have.
 verifier, the arbiter or the spec mid-flight. This one is checked by a property
 test over random event histories, not by an example.
 
+**Whoever can afford to check the signature, checks it.** Verifying ed25519 costs more
+than a Solana transaction is allowed to spend, so the on-chain program delegates to the
+Ed25519 precompile. That raises the question of how the state machine tells an
+authorized release from an unauthorized one when the check happens elsewhere. The
+answer is a witness type: releasing takes a `VerifiedAttestation`, and the only ways to
+get one are to verify the signature (what off-chain callers do) or to declare that a
+trusted checker already did (what the program does, at the one line that sits right
+after the precompile check). There is no third constructor, so no path reaches a
+release without someone having verified. The state machine still enforces everything
+else: a witness carries a verdict, not permission to skip the evidence on record or the
+legal transition.
+
 **The machine never signs what it cannot measure.** An evidence bundle is written
 by the party that gets paid, so a claim inside it is not a verification. Checks
 that can be recomputed from an instrument reading (deviation against tolerance,
@@ -88,18 +100,18 @@ would rebuild the exact problem this project exists to fix.
 
 ## Status
 
-Early. The state machine is done and tested. The on-chain program and the agent
-surfaces are in progress.
+Early but working end to end in tests. The state machine, the on-chain program and the
+agent surfaces are all in place. Nothing has touched a live network yet.
 
 | Component | State |
 |---|---|
-| `crates/settlement-core` — state machine, attestation, arbitration, timeouts | done, 38 tests |
+| `crates/settlement-core` — state machine, attestation, arbitration, timeouts | done, 46 tests |
 | `crates/settlement-client` — canonical hashing, schema validation, signing, evidence evaluation | done, 54 tests |
 | `services/mcp-settlement` — MCP tools an agent drives the job through | done, 17 tests |
 | `spec/*.schema.json` — job spec and evidence formats | done |
-| Anchor program (accounts, token movement, Ed25519 precompile checks) | in progress |
+| `programs/settlement` — Anchor shell: PDA accounts, SPL escrow, Ed25519 precompile checks | done, 34 tests |
 | x402 payment entry | not yet |
-| Devnet demo | not yet |
+| Devnet deployment and demo | not yet |
 
 ## Running the tests
 
@@ -107,8 +119,17 @@ surfaces are in progress.
 cargo test
 ```
 
-109 tests, under a minute. Most of the time goes to one test that flips all 512 bits
-of a signature and requires every single one to break the release.
+151 tests. Most of the time goes to one test that flips all 512 bits of a signature and
+requires every single one to break the release.
+
+The Anchor program's tests run against `litesvm`, an in-process SVM with the real
+ed25519 precompile, so the attack tests carry genuine signatures and prove the program
+ties the precompile's output to the exact expected key and message rather than trusting
+that some precompile ran. Build the program first:
+
+```sh
+cargo build-sbf --manifest-path programs/settlement/Cargo.toml
+```
 
 The state machine carries no Solana dependency on purpose: the logic that decides
 whether money moves runs in microseconds, so property tests can hammer it with

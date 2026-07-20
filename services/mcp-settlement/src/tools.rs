@@ -290,7 +290,7 @@ fn release(store: &mut Store, verifier: &SigningKey, args: &Value) -> Dispatch {
         verdict,
     );
 
-    let job = match record.job.apply(Event::Release { attestation }, now) {
+    let job = match record.job.release(attestation, now) {
         Ok(job) => job,
         Err(e) => return Dispatch::ToolError(format!("could not release: {e:?}")),
     };

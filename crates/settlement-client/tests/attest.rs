@@ -36,7 +36,7 @@ fn a_signed_attestation_is_accepted_by_the_core_state_machine() {
     let attestation =
         sign_attestation(&verifier_key(), JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let job = under_review_job().apply(Event::Release { attestation }, 30).unwrap();
+    let job = under_review_job().release(attestation, 30).unwrap();
 
     assert_eq!(job.state, settlement_core::State::Released);
 }
@@ -46,7 +46,7 @@ fn a_fail_attestation_refunds_via_the_core_state_machine() {
     let attestation =
         sign_attestation(&verifier_key(), JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Fail);
 
-    let job = under_review_job().apply(Event::Release { attestation }, 30).unwrap();
+    let job = under_review_job().release(attestation, 30).unwrap();
 
     assert_eq!(job.state, settlement_core::State::Refunded);
 }
@@ -56,7 +56,7 @@ fn an_attestation_signed_with_the_wrong_key_is_rejected_by_the_core() {
     let impostor = SigningKey::from_bytes(&[99u8; 32]);
     let attestation = sign_attestation(&impostor, JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let err = under_review_job().apply(Event::Release { attestation }, 30).unwrap_err();
+    let err = under_review_job().release(attestation, 30).unwrap_err();
 
     assert_eq!(err, settlement_core::Error::InvalidAttestation);
 }
@@ -67,7 +67,7 @@ fn a_signed_ruling_is_accepted_by_the_core_state_machine() {
 
     let ruling = sign_ruling(&arbiter_key(), JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let job = job.apply(Event::Resolve { ruling }, 40).unwrap();
+    let job = job.resolve(ruling, 40).unwrap();
 
     assert_eq!(job.state, settlement_core::State::Released);
 }
@@ -79,7 +79,7 @@ fn a_ruling_signed_with_the_wrong_key_is_rejected_by_the_core() {
     let impostor = SigningKey::from_bytes(&[98u8; 32]);
     let ruling = sign_ruling(&impostor, JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let err = job.apply(Event::Resolve { ruling }, 40).unwrap_err();
+    let err = job.resolve(ruling, 40).unwrap_err();
 
     assert_eq!(err, settlement_core::Error::InvalidRuling);
 }
