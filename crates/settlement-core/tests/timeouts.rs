@@ -88,7 +88,7 @@ fn a_timeout_cannot_run_over_a_dispute_that_is_still_open() {
 #[test]
 fn a_settled_job_never_times_out() {
     let released = under_review()
-        .apply(Event::Release { attestation: valid_pass_attestation() }, 300)
+        .release(valid_pass_attestation(), 300)
         .unwrap();
 
     assert!(released.apply(Event::Timeout, i64::MAX).is_err());

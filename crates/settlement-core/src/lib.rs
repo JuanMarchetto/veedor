@@ -67,6 +67,45 @@ pub struct Ruling {
     pub signature: [u8; 64],
 }
 
+/// Proof that an attestation's signature was checked against the job's verifier key
+/// over the canonical message. Releasing funds takes one of these, and there are
+/// exactly two ways to get one: [`Attestation::verify_for`], which does the curve
+/// arithmetic, or [`VerifiedAttestation::trusting_external_check`], for callers who
+/// delegated the check to something cheaper. There is no third way, so no code path
+/// reaches a release without someone having verified the signature.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VerifiedAttestation {
+    pub evidence_hash: [u8; 32],
+    pub verdict: Verdict,
+}
+
+/// The same witness for an arbiter's ruling.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VerifiedRuling {
+    pub evidence_hash: [u8; 32],
+    pub verdict: Verdict,
+}
+
+impl VerifiedAttestation {
+    /// For callers whose environment cannot afford ed25519 verification, such as a
+    /// Solana program delegating to the Ed25519 precompile.
+    ///
+    /// The caller must have confirmed that a trusted checker verified exactly
+    /// `attestation_message(job.job_id, job.spec_hash, evidence_hash, verdict)` against
+    /// `job.verifier`. Calling this without that confirmation hands over the escrow.
+    pub fn trusting_external_check(evidence_hash: [u8; 32], verdict: Verdict) -> Self {
+        VerifiedAttestation { evidence_hash, verdict }
+    }
+}
+
+impl VerifiedRuling {
+    /// See [`VerifiedAttestation::trusting_external_check`]. The message here is
+    /// `ruling_message(..)` and the key is `job.arbiter`.
+    pub fn trusting_external_check(evidence_hash: [u8; 32], verdict: Verdict) -> Self {
+        VerifiedRuling { evidence_hash, verdict }
+    }
+}
+
 /// The clocks attached to a job, all in seconds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Windows {
@@ -82,10 +121,10 @@ pub struct Windows {
 pub enum Event {
     Fund,
     SubmitEvidence { evidence_hash: [u8; 32] },
-    Release { attestation: Attestation },
+    Release { attestation: VerifiedAttestation },
     Dispute,
     /// An arbiter's decision on a disputed job.
-    Resolve { ruling: Ruling },
+    Resolve { ruling: VerifiedRuling },
     /// Permissionless: anyone may crank an expired job to its settled state.
     Timeout,
 }
@@ -228,16 +267,9 @@ impl Job {
             }
 
             (State::UnderReview, Event::Release { attestation }) => {
+                // The signature was checked before this witness existed. What the
+                // checker could not know is which evidence this job actually received.
                 self.check_evidence(attestation.evidence_hash)?;
-                let message = attestation_message(
-                    self.job_id,
-                    self.spec_hash,
-                    attestation.evidence_hash,
-                    attestation.verdict,
-                );
-                if !verify(&self.verifier, &message, &attestation.signature) {
-                    return Err(Error::InvalidAttestation);
-                }
                 Ok(Job { state: settled_by(attestation.verdict), ..self })
             }
 
@@ -267,15 +299,6 @@ impl Job {
 
             (State::Disputed, Event::Resolve { ruling }) => {
                 self.check_evidence(ruling.evidence_hash)?;
-                let message = ruling_message(
-                    self.job_id,
-                    self.spec_hash,
-                    ruling.evidence_hash,
-                    ruling.verdict,
-                );
-                if !verify(&self.arbiter, &message, &ruling.signature) {
-                    return Err(Error::InvalidRuling);
-                }
                 Ok(Job { state: settled_by(ruling.verdict), ..self })
             }
 
@@ -295,12 +318,56 @@ impl Job {
         }
     }
 
+    /// Off-chain convenience: verify the attestation, then apply it. On-chain callers
+    /// build the witness from their precompile check and call [`Job::apply`] directly.
+    pub fn release(self, attestation: Attestation, now: i64) -> Result<Self, Error> {
+        let verified = attestation.verify_for(&self)?;
+        self.apply(Event::Release { attestation: verified }, now)
+    }
+
+    /// Off-chain convenience for an arbiter's ruling. See [`Job::release`].
+    pub fn resolve(self, ruling: Ruling, now: i64) -> Result<Self, Error> {
+        let verified = ruling.verify_for(&self)?;
+        self.apply(Event::Resolve { ruling: verified }, now)
+    }
+
     /// The signed verdict must be about the evidence actually on record.
     fn check_evidence(&self, evidence_hash: [u8; 32]) -> Result<(), Error> {
         if self.evidence_hash != Some(evidence_hash) {
             return Err(Error::EvidenceMismatch);
         }
         Ok(())
+    }
+}
+
+impl Attestation {
+    /// Checks this attestation against `job`'s verifier key, doing the curve
+    /// arithmetic here. Off-chain callers use this; a Solana program cannot afford to.
+    pub fn verify_for(&self, job: &Job) -> Result<VerifiedAttestation, Error> {
+        let message = attestation_message(
+            job.job_id,
+            job.spec_hash,
+            self.evidence_hash,
+            self.verdict,
+        );
+        if verify(&job.verifier, &message, &self.signature) {
+            Ok(VerifiedAttestation { evidence_hash: self.evidence_hash, verdict: self.verdict })
+        } else {
+            Err(Error::InvalidAttestation)
+        }
+    }
+}
+
+impl Ruling {
+    /// Checks this ruling against `job`'s arbiter key.
+    pub fn verify_for(&self, job: &Job) -> Result<VerifiedRuling, Error> {
+        let message =
+            ruling_message(job.job_id, job.spec_hash, self.evidence_hash, self.verdict);
+        if verify(&job.arbiter, &message, &self.signature) {
+            Ok(VerifiedRuling { evidence_hash: self.evidence_hash, verdict: self.verdict })
+        } else {
+            Err(Error::InvalidRuling)
+        }
     }
 }
 

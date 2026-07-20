@@ -39,7 +39,7 @@ fn submitting_evidence_before_funding_is_rejected() {
 #[test]
 fn releasing_before_evidence_exists_is_rejected() {
     let err = funded()
-        .apply(Event::Release { attestation: valid_pass_attestation() }, 300)
+        .release(valid_pass_attestation(), 300)
         .unwrap_err();
 
     assert!(matches!(err, Error::IllegalTransition { from: State::Funded, .. }));
@@ -55,17 +55,21 @@ fn disputing_moves_under_review_to_disputed() {
 #[test]
 fn a_released_job_accepts_no_further_events() {
     let released = under_review()
-        .apply(Event::Release { attestation: valid_pass_attestation() }, 300)
+        .release(valid_pass_attestation(), 300)
         .unwrap();
 
     let attacks = [
         Event::Fund,
-        Event::Release { attestation: valid_pass_attestation() },
         Event::Dispute,
         Event::SubmitEvidence { evidence_hash: EVIDENCE_HASH },
+        Event::Timeout,
     ];
 
     for event in attacks {
         assert!(released.apply(event, 400).is_err(), "released job must reject {event:?}");
     }
+    assert!(
+        released.release(valid_pass_attestation(), 400).is_err(),
+        "a settled job must reject a second release even with a genuine attestation"
+    );
 }

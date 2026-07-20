@@ -1,0 +1,22 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+settlement = "8YpCfYtCBiLZ5SzTcmVZ5fkeBbPrvveWZnEzwpN8CQfJ"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+# No TypeScript/mocha harness in this repo. The program is tested with
+# `cargo test -p settlement`, using litesvm (in-process SVM, real ed25519
+# precompile execution) instead of a spawned solana-test-validator. This
+# gives a fast red/green TDD loop without a Node toolchain.
+test = "cargo test -p settlement"

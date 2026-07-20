@@ -17,7 +17,7 @@ fn disputed() -> settlement_core::Job {
 fn an_arbiter_ruling_for_the_provider_releases_the_funds() {
     let ruling = rule_with(&arbiter_key(), JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let job = disputed().apply(Event::Resolve { ruling }, 400).unwrap();
+    let job = disputed().resolve(ruling, 400).unwrap();
 
     assert_eq!(job.state, State::Released);
 }
@@ -26,7 +26,7 @@ fn an_arbiter_ruling_for_the_provider_releases_the_funds() {
 fn an_arbiter_ruling_for_the_buyer_refunds_the_funds() {
     let ruling = rule_with(&arbiter_key(), JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Fail);
 
-    let job = disputed().apply(Event::Resolve { ruling }, 400).unwrap();
+    let job = disputed().resolve(ruling, 400).unwrap();
 
     assert_eq!(job.state, State::Refunded);
 }
@@ -35,7 +35,7 @@ fn an_arbiter_ruling_for_the_buyer_refunds_the_funds() {
 fn the_verifier_cannot_rule_on_a_dispute_about_its_own_inspection() {
     let ruling = rule_with(&verifier_key(), JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let err = disputed().apply(Event::Resolve { ruling }, 400).unwrap_err();
+    let err = disputed().resolve(ruling, 400).unwrap_err();
 
     assert_eq!(err, Error::InvalidRuling);
 }
@@ -52,7 +52,7 @@ fn a_verifier_attestation_cannot_be_replayed_as_an_arbitration_ruling() {
         signature: attestation.signature,
     };
 
-    let err = disputed().apply(Event::Resolve { ruling }, 400).unwrap_err();
+    let err = disputed().resolve(ruling, 400).unwrap_err();
 
     assert_eq!(err, Error::InvalidRuling);
 }
@@ -61,7 +61,7 @@ fn a_verifier_attestation_cannot_be_replayed_as_an_arbitration_ruling() {
 fn an_arbiter_ruling_cannot_shortcut_the_verifier_before_a_dispute_exists() {
     let ruling = rule_with(&arbiter_key(), JOB_ID, SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let err = under_review().apply(Event::Resolve { ruling }, 400).unwrap_err();
+    let err = under_review().resolve(ruling, 400).unwrap_err();
 
     assert!(matches!(err, Error::IllegalTransition { from: State::UnderReview, .. }));
 }
@@ -70,7 +70,7 @@ fn an_arbiter_ruling_cannot_shortcut_the_verifier_before_a_dispute_exists() {
 fn a_ruling_bound_to_another_job_is_rejected() {
     let ruling = rule_with(&arbiter_key(), [2u8; 32], SPEC_HASH, EVIDENCE_HASH, Verdict::Pass);
 
-    let err = disputed().apply(Event::Resolve { ruling }, 400).unwrap_err();
+    let err = disputed().resolve(ruling, 400).unwrap_err();
 
     assert_eq!(err, Error::InvalidRuling);
 }
@@ -79,7 +79,7 @@ fn a_ruling_bound_to_another_job_is_rejected() {
 fn a_ruling_over_evidence_that_was_never_submitted_is_rejected() {
     let ruling = rule_with(&arbiter_key(), JOB_ID, SPEC_HASH, [11u8; 32], Verdict::Pass);
 
-    let err = disputed().apply(Event::Resolve { ruling }, 400).unwrap_err();
+    let err = disputed().resolve(ruling, 400).unwrap_err();
 
     assert_eq!(err, Error::EvidenceMismatch);
 }
