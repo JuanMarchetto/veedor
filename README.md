@@ -114,6 +114,37 @@ becomes `Inconclusive`, and the server refuses to sign and names the items a hum
 has to rule on. Reading the provider's own self-report and calling it a verdict
 would rebuild the exact problem this project exists to fix.
 
+## The verifier network
+
+That last decision names the open question this project has to answer: in v0 the
+measured value (`deviation_um = 40`) still arrives inside the bundle the provider
+writes, so the program recomputes the comparison against the spec but not the
+measurement. The comparison is independent; the measurement is not yet. Closing that
+gap is the actual product, and here is the direction, so nobody mistakes the demo for
+the whole thing.
+
+**The verifier signs the raw reading, not the bundle.** A third party in the verifier
+role takes the measurement, and their signature covers `domain ‖ job_id ‖ spec_hash ‖
+reading` — the reading they took, not the one the provider declared. The program
+already ties a signature to exactly one job and spec; what changes is whose signature
+it is. Provider and verifier are held apart the same way arbiter and verifier already
+are: separate signing domains, with a test that replays one as the other and requires
+it to fail.
+
+**The first verifiers already exist.** The marketplaces this is built for run
+evidentiary arbitration by hand today: RentAHuman wrote it into its terms, and
+pump.fun GO approves payouts at its own discretion. Those existing reviewers are the
+verifier supply; veedor is the settlement rail their signature moves money on, not a
+new inspection workforce to recruit.
+
+**Collusion resistance scales with the money at stake.** Day one, the verifier is the
+marketplace that already arbitrates, which has no incentive to collude against itself.
+At scale, a verifier posts a bond that an arbitration reversal slashes, with the
+existing dispute slot as the second instance. For checks a machine can recompute
+(dimension against tolerance, delivery against deadline), an instrument with its own
+key can sign the reading directly, which is where this is strongest and where the
+provider never touches the number.
+
 ## Status
 
 Early, and running on devnet. The state machine, the on-chain program and the agent
