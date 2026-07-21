@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    name: clippy + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libudev-dev pkg-config
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+
+      # The pure-Rust crates: state machine, client, MCP server, and x402 gateway.
+      # The on-chain Anchor program and the Kani proofs need the Solana SBF
+      # toolchain and cargo-kani respectively; both run locally (see README).
+      - name: Clippy
+        run: cargo clippy -p settlement-core -p settlement-client -p mcp-settlement -p x402-gateway --all-targets -- -D warnings
+
+      - name: Tests
+        run: cargo test -p settlement-core -p settlement-client -p mcp-settlement -p x402-gateway

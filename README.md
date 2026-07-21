@@ -1,5 +1,7 @@
 # veedor
 
+[![CI](https://github.com/JuanMarchetto/veedor/actions/workflows/ci.yml/badge.svg)](https://github.com/JuanMarchetto/veedor/actions/workflows/ci.yml)
+
 Escrow that releases on proof.
 
 AI agents can pay for anything. Nothing can prove they got what they paid for.
