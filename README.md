@@ -14,6 +14,21 @@ where the payment rail cannot see whether anything happened.
 > A *veedor* was the crown officer who inspected weights, measures and quality
 > before a shipment could be paid.
 
+## See it settle, in 60 seconds
+
+The fastest proof this is real, nothing to install:
+
+- **Watch a job settle on devnet** (60s, narrated):
+  [veedor-demo.mp4](https://github.com/JuanMarchetto/veedor/releases/download/v0.1.0-demo/veedor-demo.mp4)
+- **The release transaction, on-chain:**
+  [`5kjR36gG…`](https://explorer.solana.com/tx/5kjR36gGsGra7JTypHeQQovuLz39GhQ1H1soizkXxE1V1m7Qzr7CTCmpw714CgjDKUxttxBFG6VnSPu758RYUiZS?cluster=devnet)
+  — 25 tokens left escrow and reached the provider after the ed25519 precompile cleared
+  the verifier's signature.
+- **The deployed program:** `8YpCfYtCBiLZ5SzTcmVZ5fkeBbPrvveWZnEzwpN8CQfJ`
+
+Every claim in this README is runnable: [settle a job yourself](#on-devnet),
+[run the 182 tests](#running-the-tests), [re-measure the market](research/x402-census).
+
 ## The gap this fills
 
 Agent payment infrastructure shipped in the last year and works. OpenAI and Stripe
@@ -107,6 +122,13 @@ release without someone having verified. The state machine still enforces everyt
 else: a witness carries a verdict, not permission to skip the evidence on record or the
 legal transition.
 
+This design was forced, not chosen for looks. An earlier revision re-verified the
+signature inside `Job::apply`, and that curve arithmetic alone blew past Solana's
+1,400,000 CU ceiling: the genuinely-authorized release could not complete on real
+hardware, even though every attack test still passed. The witness type is how the
+authorized path got back under budget without opening a door for an unauthorized one.
+The war story is in the header of `programs/settlement/tests/release_attacks.rs`.
+
 **The machine never signs what it cannot measure.** An evidence bundle is written
 by the party that gets paid, so a claim inside it is not a verification. Checks
 that can be recomputed from an instrument reading (deviation against tolerance,
@@ -162,14 +184,6 @@ surfaces are in place, and the program is deployed. No mainnet, no real money.
 | `demo` — drives one job through the deployed program on devnet | see below |
 | `services/x402-gateway` — HTTP entry that answers 402 and takes payment | done, 31 tests (+2 devnet-only, `--ignored`). Real on-chain verification available, see below |
 
-## Watch it settle a job
-
-A 60-second walkthrough, narrated:
-[**veedor-demo.mp4**](https://github.com/JuanMarchetto/veedor/releases/download/v0.1.0-demo/veedor-demo.mp4)
-
-Everything on screen is real output: the job settling on devnet, and the server
-declining to sign an acceptance item that no instrument can settle.
-
 ## On devnet
 
 The program is deployed and executable:
@@ -182,6 +196,17 @@ The program is deployed and executable:
 deployment: a real SPL mint, real token accounts, a real ed25519 precompile
 verifying the verifier's signature, and real transactions. It prints an explorer
 link for every step, so the claims here can be checked rather than believed.
+
+Before you run it, the payer needs a funded devnet keypair (at least 0.1 SOL):
+
+```sh
+solana-keygen new                      # or point DEMO_KEYPAIR at an existing key
+solana airdrop 1 --url devnet          # rate-limited? use faucet.solana.com
+```
+
+The demo reads `~/.config/solana/id.json` by default; set `DEMO_KEYPAIR=/path/to/key.json`
+to use another. The first build compiles the Solana client crates, so expect a few
+minutes once.
 
 A run from 2026-07-20, with the job priced at 25.000000 of a six-decimal token:
 
@@ -267,9 +292,16 @@ cargo test -p x402-gateway --test payment_verification_solana -- --ignored --tes
 ```
 
 The Anchor program's tests run against `litesvm`, an in-process SVM with the real
-ed25519 precompile, so the attack tests carry genuine signatures and prove the program
-ties the precompile's output to the exact expected key and message rather than trusting
-that some precompile ran. Build the program first:
+ed25519 precompile, so the attack tests carry genuine signatures rather than mocks. They
+prove the program ties the precompile's output to the exact expected key and message, not
+merely that some precompile ran. Concretely: a cryptographically valid signature from the
+*wrong-role* key (the arbiter, a real signer of this job) is rejected
+(`release_where_the_precompile_verifies_the_wrong_key_is_rejected`); a valid signature
+over a *ruling-domain* message with the identical job, spec, evidence and verdict is
+rejected as an attestation (`release_where_the_precompile_verifies_a_ruling_message_instead_of_an_attestation_is_rejected`);
+and a precompile instruction placed *after* the settle instead of before is rejected
+(`release_with_the_precompile_ix_after_instead_of_before_is_rejected`). Build the program
+first:
 
 ```sh
 cargo build-sbf --manifest-path programs/settlement/Cargo.toml
